@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mitarbeit</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Mitarbeit">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#1f6f5c">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<style>
+  :root {
+    --bg: #f4f5f2;
+    --surface: #ffffff;
+    --text: #1d2321;
+    --muted: #66706c;
+    --line: #dde1dd;
+    --accent: #1f6f5c;
+    --accent-text: #ffffff;
+    --p1: #e3f1ec; --p1-on: #1f6f5c;
+    --p2: #b9dfd1; --p2-on: #154d40;
+    --p3: #1f6f5c; --p3-on: #ffffff;
+    --abs: #f1e4e1; --abs-on: #9a3b2c;
+    --warn-bg: #fff4d6; --warn-text: #6b4e00;
+    --shadow: 0 1px 2px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141816; --surface: #1d2321; --text: #e8ece9; --muted: #9aa5a0; --line: #2f3734;
+      --accent: #4fb596; --accent-text: #0d1f19;
+      --p1: #22332d; --p1-on: #8fd8bf;
+      --p2: #2f5b4c; --p2-on: #d6f3e8;
+      --p3: #4fb596; --p3-on: #0d1f19;
+      --abs: #3a2622; --abs-on: #f0a796;
+      --warn-bg: #3a3014; --warn-text: #f3d98a;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141816; --surface: #1d2321; --text: #e8ece9; --muted: #9aa5a0; --line: #2f3734;
+    --accent: #4fb596; --accent-text: #0d1f19;
+    --p1: #22332d; --p1-on: #8fd8bf;
+    --p2: #2f5b4c; --p2-on: #d6f3e8;
+    --p3: #4fb596; --p3-on: #0d1f19;
+    --abs: #3a2622; --abs-on: #f0a796;
+    --warn-bg: #3a3014; --warn-text: #f3d98a;
+    --shadow: none;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 17px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  button, input, label.btn { font: inherit; }
+  button, label.btn { touch-action: manipulation; -webkit-tap-highlight-color: transparent; cursor: pointer; user-select: none; -webkit-user-select: none; }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 16px; }
+  header.bar {
+    position: sticky; top: 0; z-index: 5; background: var(--bg);
+    padding: calc(10px + env(safe-area-inset-top)) 0 10px; border-bottom: 1px solid var(--line);
+  }
+  .bar-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h1 { font-size: 26px; margin: 0; flex: 1; min-width: 0; }
+  h1 small { font-size: 15px; color: var(--muted); font-weight: 500; margin-left: 6px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--text); font-weight: 600;
+  }
+  .btn.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--accent); padding: 0 8px; }
+  .btn:disabled { opacity: .45; }
+  .hidden { display: none !important; }
+  .note { margin: 14px 0; padding: 12px 14px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-text); }
+  .muted { color: var(--muted); }
+  .empty { text-align: center; padding: 48px 16px; }
+  .empty p { max-width: 520px; margin: 10px auto; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; margin: 16px 0; }
+  .klasse {
+    text-align: left; padding: 16px; border-radius: 14px; border: 1px solid var(--line);
+    background: var(--surface); box-shadow: var(--shadow); color: var(--text); min-height: 92px;
+  }
+  .klasse b { display: block; font-size: 21px; }
+  .klasse span { display: block; font-size: 14px; color: var(--muted); margin-top: 4px; }
+  .datum { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .datum input[type=date] {
+    min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--text); font-weight: 600;
+  }
+  .rund { width: 44px; padding: 0; font-size: 22px; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0 2px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; min-height: 34px; padding: 0 12px; border-radius: 17px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-size: 14px; font-weight: 600; }
+  .chip.on { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  .status { font-size: 14px; color: var(--muted); margin-left: auto; }
+  ul.liste { list-style: none; margin: 12px 0 24px; padding: 0; }
+  ul.liste li {
+    display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-bottom: 8px;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+  }
+  .nr { width: 26px; text-align: right; color: var(--muted); font-size: 14px; flex: none; }
+  .wer { flex: 1; min-width: 0; }
+  .wer b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wer span { display: block; font-size: 13px; color: var(--muted); min-height: 1.4em; }
+  .wahl { display: flex; gap: 6px; flex: none; }
+  .wahl button {
+    width: 64px; height: 52px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--muted); font-size: 20px; font-weight: 700; letter-spacing: -1px;
+  }
+  .wahl button.f { font-size: 14px; letter-spacing: 0; }
+  .wahl button.on[data-w="+"]   { background: var(--p1); color: var(--p1-on); border-color: var(--p1-on); }
+  .wahl button.on[data-w="++"]  { background: var(--p2); color: var(--p2-on); border-color: var(--p2-on); }
+  .wahl button.on[data-w="+++"] { background: var(--p3); color: var(--p3-on); border-color: var(--p3); }
+  .wahl button.on[data-w="f"]   { background: var(--abs); color: var(--abs-on); border-color: var(--abs-on); }
+  li.done { border-color: var(--accent); }
+  @media (max-width: 560px) {
+    ul.liste li { flex-wrap: wrap; }
+    .wahl { width: 100%; }
+    .wahl button { flex: 1; width: auto; }
+    h1 { font-size: 22px; }
+  }
+  dialog {
+    border: none; border-radius: 16px; padding: 20px; max-width: min(520px, calc(100vw - 32px));
+    background: var(--surface); color: var(--text); box-shadow: 0 10px 40px rgba(0,0,0,.25);
+  }
+  dialog::backdrop { background: rgba(0,0,0,.35); }
+  dialog h2 { margin: 0 0 12px; font-size: 20px; }
+  .menu { display: flex; flex-direction: column; gap: 10px; }
+  .menu .btn { justify-content: flex-start; }
+  .werte { display: grid; grid-template-columns: auto 90px; gap: 8px 12px; align-items: center; margin: 8px 0 4px; }
+  .werte input { min-height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); padding: 0 10px; width: 100%; }
+  .toast {
+    position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%);
+    background: var(--text); color: var(--bg); padding: 12px 18px; border-radius: 12px; font-weight: 600;
+    max-width: calc(100vw - 32px); z-index: 20; opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- Startseite: Klassen -->
+<section id="start">
+  <header class="bar"><div class="wrap bar-row">
+    <h1>Mitarbeit</h1>
+    <button class="btn primary" id="btnExport">Excel exportieren</button>
+    <button class="btn" id="btnMenu" aria-label="Menü">Menü</button>
+  </div></header>
+  <div class="wrap">
+    <div id="hinweis" class="note hidden"></div>
+    <div id="leer" class="empty hidden">
+      <h2>Noch keine Klassen</h2>
+      <p class="muted">Tippe auf <b>Klassen importieren</b> und wähle deine Notenliste (z.&nbsp;B. <i>1_Noten2627_1.HJ.xlsx</i>). Die App übernimmt von jedem Klassenblatt Name und Vorname. Die Daten bleiben nur auf diesem Gerät.</p>
+      <p><label class="btn primary">Klassen importieren<input type="file" class="hidden datei"></label></p>
+    </div>
+    <div id="klassen" class="grid"></div>
+  </div>
+</section>
+
+<!-- Klasse: Erfassung -->
+<section id="erfassung" class="hidden">
+  <header class="bar"><div class="wrap">
+    <div class="bar-row">
+      <button class="btn ghost" id="btnZurueck">‹ Klassen</button>
+      <h1 id="klName"></h1>
+    </div>
+    <div class="datum">
+      <button class="btn rund" id="tagMinus" aria-label="Vorheriger Tag">‹</button>
+      <input type="date" id="datum">
+      <button class="btn rund" id="tagPlus" aria-label="Nächster Tag">›</button>
+      <button class="btn" id="btnHeute">Heute</button>
+      <span class="status" id="status"></span>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div></header>
+  <div class="wrap"><ul class="liste" id="liste"></ul></div>
+</section>
+
+<dialog id="dlgMenu">
+  <h2>Menü</h2>
+  <div class="menu">
+    <label class="btn">Klassen importieren (Notenliste, WebUntis oder Sicherung)<input type="file" class="hidden datei"></label>
+    <button class="btn" id="btnWerte">Umrechnung in Prozent</button>
+    <button class="btn" id="btnLoeschen">Alle Daten auf diesem Gerät löschen</button>
+    <p class="muted" id="speicherInfo" style="margin:4px 0 0;font-size:14px"></p>
+    <button class="btn primary" id="menuZu">Schließen</button>
+  </div>
+</dialog>
+
+<dialog id="dlgWerte">
+  <h2>Umrechnung in Prozent</h2>
+  <p class="muted" style="margin-top:0">Für die Spalte „MA %“ im Export: Durchschnitt der Bewertungen, „fehlt“ zählt nicht.</p>
+  <div class="werte">
+    <label for="w1">+</label><input id="w1" type="number" min="0" max="100" inputmode="numeric">
+    <label for="w2">++</label><input id="w2" type="number" min="0" max="100" inputmode="numeric">
+    <label for="w3">+++</label><input id="w3" type="number" min="0" max="100" inputmode="numeric">
+  </div>
+  <div class="bar-row" style="margin-top:14px;justify-content:flex-end">
+    <button class="btn" id="werteAbbr">Abbrechen</button>
+    <button class="btn primary" id="werteOk">Speichern</button>
+  </div>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script src="vendor/xlsx.full.min.js"></script>
+<script>
+(function () {
+  "use strict";
+  var KEY = "mitarbeit-v1";
+  var WERTE = ["+", "++", "+++", "f"];
+  var state = laden();
+  var aktiv = null;      // Name der geöffneten Klasse
+  var datum = heute();
+
+  // ---------- Speicher ----------
+  function leer() { return { version: 1, klassen: [], prozent: { "+": 33, "++": 67, "+++": 100 }, letzterExport: null }; }
+  function laden() {
+    try {
+      var s = JSON.parse(localStorage.getItem(KEY) || "null");
+      if (s && Array.isArray(s.klassen)) { if (!s.prozent) s.prozent = leer().prozent; return s; }
+    } catch (e) {}
+    return leer();
+  }
+  var speicherFehler = false;
+  function speichern() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); speicherFehler = false; }
+    catch (e) { speicherFehler = true; toast("Speichern fehlgeschlagen – bitte jetzt exportieren!"); }
+  }
+  function dauerhaft() {
+    try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+  }
+
+  // ---------- Hilfen ----------
+  function pad(n) { return (n < 10 ? "0" : "") + n; }
+  function iso(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function heute() { return iso(new Date()); }
+  function deDatum(s) { var p = s.split("-"); return p[2] + "." + p[1] + "." + p[0]; }
+  function kurzDatum(s) {
+    var p = s.split("-"); var d = new Date(+p[0], p[1] - 1, +p[2]);
+    return ["So", "Mo", "Di", "Mi", "Do", "Fr", "Sa"][d.getDay()] + " " + p[2] + "." + p[1] + ".";
+  }
+  function tagVersatz(s, n) { var p = s.split("-"); var d = new Date(+p[0], p[1] - 1, +p[2] + n); return iso(d); }
+  function sid(name, vorname) { return name + "|" + vorname; }
+  function klasse(name) { for (var i = 0; i < state.klassen.length; i++) if (state.klassen[i].name === name) return state.klassen[i]; return null; }
+  function anzeige(w) { return w === "f" ? "fehlt" : w; }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  var tt;
+  function toast(t) { var el = document.getElementById("toast"); el.textContent = t; el.classList.add("show"); clearTimeout(tt); tt = setTimeout(function () { el.classList.remove("show"); }, 2600); }
+
+  function statistik(k, id) {
+    var n = 0, summe = 0, fehlt = 0;
+    Object.keys(k.noten).forEach(function (d) {
+      var w = k.noten[d][id];
+      if (w === "f") fehlt++;
+      else if (w) { n++; summe += Number(state.prozent[w]); }
+    });
+    return { n: n, fehlt: fehlt, prozent: n ? Math.round(summe / n) : null };
+  }
+
+  // ---------- Startseite ----------
+  function zeigeStart() {
+    aktiv = null;
+    document.getElementById("start").classList.remove("hidden");
+    document.getElementById("erfassung").classList.add("hidden");
+    var box = document.getElementById("klassen");
+    box.innerHTML = "";
+    document.getElementById("leer").classList.toggle("hidden", state.klassen.length > 0);
+    document.getElementById("btnExport").disabled = state.klassen.length === 0;
+    state.klassen.forEach(function (k) {
+      var tage = Object.keys(k.noten).filter(function (d) { return Object.keys(k.noten[d]).length; }).sort();
+      var b = document.createElement("button");
+      b.className = "klasse";
+      b.innerHTML = "<b>" + esc(k.name) + "</b><span>" + k.schueler.length + " Schüler</span><span>" +
+        (tage.length ? "zuletzt " + kurzDatum(tage[tage.length - 1]) + " · " + tage.length + " Tage" : "noch nichts erfasst") + "</span>";
+      b.onclick = function () { oeffne(k.name); };
+      box.appendChild(b);
+    });
+    hinweis();
+  }
+  function hinweis() {
+    var el = document.getElementById("hinweis");
+    var hatDaten = state.klassen.some(function (k) { return Object.keys(k.noten).length; });
+    var text = "";
+    if (speicherFehler) text = "Der Browser konnte nicht speichern. Bitte sofort „Excel exportieren“.";
+    else if (hatDaten && !state.letzterExport) text = "Noch keine Sicherung erstellt. Tippe auf „Excel exportieren“ und lege die Datei z. B. in der Nextcloud ab.";
+    else if (hatDaten) {
+      var tage = Math.floor((Date.now() - new Date(state.letzterExport).getTime()) / 86400000);
+      if (tage >= 7) text = "Letzte Sicherung vor " + tage + " Tagen. Bitte wieder „Excel exportieren“.";
+    }
+    el.textContent = text;
+    el.classList.toggle("hidden", !text);
+  }
+
+  // ---------- Erfassung ----------
+  function oeffne(name) {
+    aktiv = name;
+    document.getElementById("start").classList.add("hidden");
+    document.getElementById("erfassung").classList.remove("hidden");
+    document.getElementById("klName").textContent = name;
+    datum = heute();
+    zeigeTag();
+    window.scrollTo(0, 0);
+  }
+  function zeigeTag() {
+    var k = klasse(aktiv); if (!k) return zeigeStart();
+    document.getElementById("datum").value = datum;
+    var tag = k.noten[datum] || {};
+    var ul = document.getElementById("liste");
+    ul.innerHTML = "";
+    k.schueler.forEach(function (s, i) {
+      var id = sid(s.name, s.vorname);
+      var li = document.createElement("li");
+      li.dataset.id = id;
+      li.innerHTML = '<span class="nr">' + (i + 1) + '</span><div class="wer"><b>' + esc(s.name) + ", " + esc(s.vorname) +
+        '</b><span class="st"></span></div><div class="wahl">' +
+        WERTE.map(function (w) { return '<button data-w="' + w + '"' + (w === "f" ? ' class="f"' : "") + ">" + anzeige(w) + "</button>"; }).join("") + "</div>";
+      ul.appendChild(li);
+      markiere(li, tag[id], k, id);
+    });
+    status();
+    chips();
+  }
+  function markiere(li, w, k, id) {
+    li.querySelectorAll(".wahl button").forEach(function (b) { b.classList.toggle("on", b.dataset.w === w); });
+    li.classList.toggle("done", !!w);
+    var st = statistik(k, id);
+    li.querySelector(".st").textContent = st.n || st.fehlt
+      ? (st.prozent !== null ? "Ø " + st.prozent + " % · " : "") + st.n + "× bewertet" + (st.fehlt ? " · " + st.fehlt + "× fehlt" : "")
+      : "";
+  }
+  function status() {
+    var k = klasse(aktiv); var tag = k.noten[datum] || {};
+    var n = k.schueler.filter(function (s) { return tag[sid(s.name, s.vorname)]; }).length;
+    document.getElementById("status").textContent = n + " von " + k.schueler.length + " erfasst";
+  }
+  function chips() {
+    var k = klasse(aktiv);
+    // immer sichtbar (inkl. gewähltem Tag), damit die Liste beim ersten Antippen nicht verrutscht
+    var tage = Object.keys(k.noten).filter(function (d) { return Object.keys(k.noten[d]).length; });
+    if (tage.indexOf(datum) < 0) tage.push(datum);
+    tage.sort().reverse();
+    var box = document.getElementById("chips");
+    box.innerHTML = "";
+    tage.forEach(function (d) {
+      var c = document.createElement("button");
+      c.className = "chip" + (d === datum ? " on" : "");
+      c.textContent = kurzDatum(d);
+      c.onclick = function () { datum = d; zeigeTag(); };
+      box.appendChild(c);
+    });
+  }
+  document.getElementById("liste").addEventListener("click", function (e) {
+    var b = e.target.closest(".wahl button"); if (!b) return;
+    var li = b.closest("li"); var id = li.dataset.id; var k = klasse(aktiv);
+    var tag = k.noten[datum] || (k.noten[datum] = {});
+    if (tag[id] === b.dataset.w) delete tag[id]; else tag[id] = b.dataset.w;
+    if (!Object.keys(tag).length) delete k.noten[datum];
+    speichern();
+    markiere(li, tag[id], k, id);
+    status();
+    chips();
+  });
+  document.getElementById("datum").addEventListener("change", function (e) { if (e.target.value) { datum = e.target.value; zeigeTag(); } });
+  document.getElementById("tagMinus").onclick = function () { datum = tagVersatz(datum, -1); zeigeTag(); };
+  document.getElementById("tagPlus").onclick = function () { datum = tagVersatz(datum, 1); zeigeTag(); };
+  document.getElementById("btnHeute").onclick = function () { datum = heute(); zeigeTag(); };
+  document.getElementById("btnZurueck").onclick = zeigeStart;
+
+  // ---------- Import ----------
+  function txt(ws, adr) { var c = ws[adr]; return c ? String(c.w != null ? c.w : c.v).trim() : ""; }
+  function wert(ws, adr) { var c = ws[adr]; return c ? String(c.v).trim() : ""; }
+  function datumAusKopf(ws, adr) {
+    var c = ws[adr]; if (!c) return null;
+    if (c.t === "n" && c.v > 30000 && c.v < 80000) { var d = XLSX.SSF.parse_date_code(c.v); return d.y + "-" + pad(d.m) + "-" + pad(d.d); }
+    var m = String(c.v).trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    return m ? m[3] + "-" + pad(+m[2]) + "-" + pad(+m[1]) : null;
+  }
+  function liesMappe(wb, dateiname) {
+    var gefunden = [];
+    wb.SheetNames.forEach(function (sn) {
+      var ws = wb.Sheets[sn]; if (!ws || !ws["!ref"]) return;
+      var rng = XLSX.utils.decode_range(ws["!ref"]);
+      // Notenliste oder eigener Export: B3 "Name", C3 "Vorname", ab Zeile 4
+      if (txt(ws, "B3") === "Name" && txt(ws, "C3") === "Vorname") {
+        var name = txt(ws, "C1") || sn;
+        if (/^vorlage$/i.test(name)) return;
+        var spalten = [];
+        for (var c = 3; c <= rng.e.c; c++) { var d = datumAusKopf(ws, XLSX.utils.encode_cell({ r: 2, c: c })); if (d) spalten.push({ c: c, d: d }); }
+        var schueler = [], noten = {};
+        for (var r = 3; r <= rng.e.r; r++) {
+          var nn = txt(ws, "B" + (r + 1)), vn = txt(ws, "C" + (r + 1));
+          if (!nn) continue;
+          schueler.push({ name: nn, vorname: vn });
+          spalten.forEach(function (sp) {
+            var w = wert(ws, XLSX.utils.encode_cell({ r: r, c: sp.c }));
+            if (w === "fehlt") w = "f";
+            if (WERTE.indexOf(w) >= 0) { (noten[sp.d] = noten[sp.d] || {})[sid(nn, vn)] = w; }
+          });
+        }
+        if (schueler.length) gefunden.push({ name: name, schueler: schueler, noten: noten });
+      }
+      // WebUntis-Schülerliste: A1 "name", B1 "longName", C1 "foreName"
+      else if (txt(ws, "B1") === "longName" && txt(ws, "C1") === "foreName") {
+        var kl = "", liste = [];
+        for (var r2 = 1; r2 <= rng.e.r; r2++) {
+          var n2 = txt(ws, "B" + (r2 + 1)); if (!n2) continue;
+          liste.push({ name: n2, vorname: txt(ws, "C" + (r2 + 1)) });
+          kl = kl || txt(ws, "F" + (r2 + 1));
+        }
+        if (liste.length) gefunden.push({ name: kl || dateiname.replace(/\.[^.]+$/, ""), schueler: liste, noten: {} });
+      }
+    });
+    return gefunden;
+  }
+  function uebernehmen(gefunden) {
+    var neu = 0, schuelerNeu = 0, bewertungen = 0;
+    gefunden.forEach(function (g) {
+      var k = klasse(g.name);
+      if (!k) { k = { name: g.name, schueler: [], noten: {} }; state.klassen.push(k); neu++; }
+      var vorhanden = {};
+      k.schueler.forEach(function (s) { vorhanden[sid(s.name, s.vorname)] = true; });
+      g.schueler.forEach(function (s) { if (!vorhanden[sid(s.name, s.vorname)]) { k.schueler.push(s); schuelerNeu++; } });
+      k.schueler.sort(function (a, b) { return a.name.localeCompare(b.name, "de") || a.vorname.localeCompare(b.vorname, "de"); });
+      Object.keys(g.noten).forEach(function (d) {
+        var tag = k.noten[d] || (k.noten[d] = {});
+        Object.keys(g.noten[d]).forEach(function (id) { tag[id] = g.noten[d][id]; bewertungen++; });
+      });
+    });
+    speichern();
+    dauerhaft();
+    return { klassen: gefunden.length, neu: neu, schuelerNeu: schuelerNeu, bewertungen: bewertungen };
+  }
+  document.querySelectorAll("input.datei").forEach(function (inp) {
+    inp.addEventListener("change", function () {
+      var f = inp.files && inp.files[0]; inp.value = "";
+      if (!f) return;
+      document.getElementById("dlgMenu").close();
+      var fr = new FileReader();
+      fr.onload = function () {
+        try {
+          var wb = XLSX.read(new Uint8Array(fr.result), { type: "array" });
+          var g = liesMappe(wb, f.name);
+          if (!g.length) { toast("Keine Klassenliste gefunden (erwartet: Spalten Name / Vorname ab Zeile 4)."); return; }
+          var e = uebernehmen(g);
+          toast(e.klassen + " Klassen gelesen, " + e.schuelerNeu + " Schüler neu" + (e.bewertungen ? ", " + e.bewertungen + " Bewertungen" : ""));
+          aktiv ? zeigeTag() : zeigeStart();
+        } catch (err) { toast("Datei konnte nicht gelesen werden."); }
+      };
+      fr.readAsArrayBuffer(f);
+    });
+  });
+
+  // ---------- Export ----------
+  function mappe() {
+    var wb = XLSX.utils.book_new();
+    state.klassen.forEach(function (k) {
+      var tage = Object.keys(k.noten).filter(function (d) { return Object.keys(k.noten[d]).length; }).sort();
+      var aoa = [];
+      aoa.push(["", "Klasse", k.name, "Mitarbeit"]);
+      aoa.push(["", "", "", "Stand " + deDatum(heute())]);
+      aoa.push(["Nr", "Name", "Vorname"].concat(tage.map(deDatum), ["Anzahl", "fehlt", "MA %"]));
+      k.schueler.forEach(function (s, i) {
+        var id = sid(s.name, s.vorname); var st = statistik(k, id);
+        aoa.push([i + 1, s.name, s.vorname]
+          .concat(tage.map(function (d) { var w = k.noten[d][id]; return w ? anzeige(w) : ""; }),
+                  [st.n, st.fehlt, st.prozent === null ? "" : st.prozent]));
+      });
+      var ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws["!cols"] = [{ wch: 4 }, { wch: 18 }, { wch: 16 }].concat(tage.map(function () { return { wch: 11 }; }), [{ wch: 8 }, { wch: 7 }, { wch: 7 }]);
+      XLSX.utils.book_append_sheet(wb, ws, k.name.slice(0, 31));
+    });
+    var info = XLSX.utils.aoa_to_sheet([
+      ["Mitarbeit – Sicherung"], ["Erstellt", deDatum(heute())], [],
+      ["Umrechnung", "Prozent"], ["+", state.prozent["+"]], ["++", state.prozent["++"]], ["+++", state.prozent["+++"]], [],
+      ["MA % = Durchschnitt der Bewertungen, „fehlt“ zählt nicht."],
+      ["Diese Datei kann in der App über „Klassen importieren“ wieder eingelesen werden."]
+    ]);
+    info["!cols"] = [{ wch: 14 }, { wch: 12 }];
+    XLSX.utils.book_append_sheet(wb, info, "Info");
+    return wb;
+  }
+  document.getElementById("btnExport").onclick = function () {
+    var name = "Mitarbeit_" + heute() + ".xlsx";
+    var daten = XLSX.write(mappe(), { bookType: "xlsx", type: "array" });
+    var typ = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    var datei = null;
+    try { datei = new File([daten], name, { type: typ }); } catch (e) {}
+    var fertig = function () { state.letzterExport = new Date().toISOString(); speichern(); hinweis(); toast("Gesichert: " + name); };
+    if (datei && navigator.maxTouchPoints > 0 && navigator.canShare && navigator.canShare({ files: [datei] })) {
+      navigator.share({ files: [datei], title: name }).then(fertig, function (err) { if (err && err.name !== "AbortError") herunterladen(); });
+    } else herunterladen();
+    function herunterladen() {
+      var url = URL.createObjectURL(new Blob([daten], { type: typ }));
+      var a = document.createElement("a"); a.href = url; a.download = name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      fertig();
+    }
+  };
+
+  // ---------- Menü ----------
+  var dlgMenu = document.getElementById("dlgMenu"), dlgWerte = document.getElementById("dlgWerte");
+  document.getElementById("btnMenu").onclick = function () {
+    var n = state.klassen.reduce(function (a, k) { return a + k.schueler.length; }, 0);
+    document.getElementById("speicherInfo").textContent = state.klassen.length + " Klassen, " + n + " Schüler auf diesem Gerät gespeichert." +
+      (state.letzterExport ? " Letzte Sicherung: " + new Date(state.letzterExport).toLocaleDateString("de-DE") + "." : " Noch keine Sicherung.");
+    dlgMenu.showModal();
+  };
+  document.getElementById("menuZu").onclick = function () { dlgMenu.close(); };
+  document.getElementById("btnWerte").onclick = function () {
+    dlgMenu.close();
+    document.getElementById("w1").value = state.prozent["+"];
+    document.getElementById("w2").value = state.prozent["++"];
+    document.getElementById("w3").value = state.prozent["+++"];
+    dlgWerte.showModal();
+  };
+  document.getElementById("werteAbbr").onclick = function () { dlgWerte.close(); };
+  document.getElementById("werteOk").onclick = function () {
+    var v = ["w1", "w2", "w3"].map(function (id) { return Number(document.getElementById(id).value); });
+    if (v.some(function (x) { return !isFinite(x) || x < 0 || x > 100; })) { toast("Bitte Werte zwischen 0 und 100 eingeben."); return; }
+    state.prozent = { "+": v[0], "++": v[1], "+++": v[2] };
+    speichern(); dlgWerte.close(); toast("Umrechnung gespeichert");
+  };
+  document.getElementById("btnLoeschen").onclick = function () {
+    if (!confirm("Wirklich alle Klassen und Bewertungen auf diesem Gerät löschen? Vorher exportieren!")) return;
+    if (!confirm("Ganz sicher? Das lässt sich nicht rückgängig machen.")) return;
+    state = leer(); speichern(); dlgMenu.close(); zeigeStart();
+  };
+
+  zeigeStart();
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    navigator.serviceWorker.register("sw.js").catch(function () {});
+  }
+})();
+</script>
+</body>
+</html>
