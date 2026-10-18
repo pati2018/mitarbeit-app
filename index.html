@@ -110,14 +110,12 @@
   .wer span { display: block; font-size: 13px; color: var(--muted); min-height: 1.4em; }
   .wahl { display: flex; gap: 6px; flex: none; }
   .wahl button {
-    width: 64px; height: 52px; border-radius: 10px; border: 1px solid var(--line);
-    background: var(--bg); color: var(--muted); font-size: 20px; font-weight: 700; letter-spacing: -1px;
+    width: 52px; height: 52px; border-radius: 10px; border: 1px solid var(--line);
+    background: var(--bg); color: var(--muted); font-size: 21px; font-weight: 700;
   }
-  .wahl button.f { font-size: 14px; letter-spacing: 0; }
-  .wahl button.on[data-w="+"]   { background: var(--p1); color: var(--p1-on); border-color: var(--p1-on); }
-  .wahl button.on[data-w="++"]  { background: var(--p2); color: var(--p2-on); border-color: var(--p2-on); }
-  .wahl button.on[data-w="+++"] { background: var(--p3); color: var(--p3-on); border-color: var(--p3); }
-  .wahl button.on[data-w="f"]   { background: var(--abs); color: var(--abs-on); border-color: var(--abs-on); }
+  .wahl button.f { width: 60px; font-size: 14px; margin-left: 4px; }
+  .wahl button.on { background: var(--p3); color: var(--p3-on); border-color: var(--p3); }
+  .wahl button.on[data-w="f"] { background: var(--abs); color: var(--abs-on); border-color: var(--abs-on); }
   li.done { border-color: var(--accent); }
   @media (max-width: 560px) {
     ul.liste li { flex-wrap: wrap; }
@@ -195,12 +193,8 @@
 
 <dialog id="dlgWerte">
   <h2>Umrechnung in Prozent</h2>
-  <p class="muted" style="margin-top:0">Für die Spalte „MA %“ im Export: Durchschnitt der Bewertungen, „fehlt“ zählt nicht.</p>
-  <div class="werte">
-    <label for="w1">+</label><input id="w1" type="number" min="0" max="100" inputmode="numeric">
-    <label for="w2">++</label><input id="w2" type="number" min="0" max="100" inputmode="numeric">
-    <label for="w3">+++</label><input id="w3" type="number" min="0" max="100" inputmode="numeric">
-  </div>
+  <p class="muted" style="margin-top:0">Für die Spalte „MA %“ im Export: Durchschnitt der Prozentwerte, „fehlt“ zählt nicht. Voreinstellung nach dem Bewertungsschlüssel (Prozentwert der ganzen Note).</p>
+  <div class="werte" id="werteFelder"></div>
   <div class="bar-row" style="margin-top:14px;justify-content:flex-end">
     <button class="btn" id="werteAbbr">Abbrechen</button>
     <button class="btn primary" id="werteOk">Speichern</button>
@@ -214,17 +208,31 @@
 (function () {
   "use strict";
   var KEY = "mitarbeit-v1";
-  var WERTE = ["+", "++", "+++", "f"];
+  var NOTEN = ["1", "2", "3", "4", "5", "6"];
+  var WERTE = NOTEN.concat(["f"]);
+  // Bewertungsschlüssel: Prozentwert, der genau die ganze Note ergibt (94 % = 1, 80 % = 2, ...)
+  var PROZENT_STANDARD = { "1": 94, "2": 80, "3": 65, "4": 50, "5": 31, "6": 0 };
   var state = laden();
   var aktiv = null;      // Name der geöffneten Klasse
   var datum = heute();
 
   // ---------- Speicher ----------
-  function leer() { return { version: 1, klassen: [], prozent: { "+": 33, "++": 67, "+++": 100 }, letzterExport: null }; }
+  function leer() { return { version: 2, klassen: [], prozent: Object.assign({}, PROZENT_STANDARD), letzterExport: null }; }
   function laden() {
     try {
       var s = JSON.parse(localStorage.getItem(KEY) || "null");
-      if (s && Array.isArray(s.klassen)) { if (!s.prozent) s.prozent = leer().prozent; return s; }
+      if (s && Array.isArray(s.klassen)) {
+        // Umstellung von +/++/+++ auf Noten 1–6: alte Plus-Werte entfernen
+        if (!s.prozent || s.prozent["1"] == null) s.prozent = Object.assign({}, PROZENT_STANDARD);
+        s.klassen.forEach(function (k) {
+          Object.keys(k.noten).forEach(function (d) {
+            Object.keys(k.noten[d]).forEach(function (id) { if (WERTE.indexOf(k.noten[d][id]) < 0) delete k.noten[d][id]; });
+            if (!Object.keys(k.noten[d]).length) delete k.noten[d];
+          });
+        });
+        s.version = 2;
+        return s;
+      }
     } catch (e) {}
     return leer();
   }
@@ -255,13 +263,13 @@
   function toast(t) { var el = document.getElementById("toast"); el.textContent = t; el.classList.add("show"); clearTimeout(tt); tt = setTimeout(function () { el.classList.remove("show"); }, 2600); }
 
   function statistik(k, id) {
-    var n = 0, summe = 0, fehlt = 0;
+    var n = 0, summe = 0, notenSumme = 0, fehlt = 0;
     Object.keys(k.noten).forEach(function (d) {
       var w = k.noten[d][id];
       if (w === "f") fehlt++;
-      else if (w) { n++; summe += Number(state.prozent[w]); }
+      else if (NOTEN.indexOf(w) >= 0) { n++; summe += Number(state.prozent[w]); notenSumme += Number(w); }
     });
-    return { n: n, fehlt: fehlt, prozent: n ? Math.round(summe / n) : null };
+    return { n: n, fehlt: fehlt, prozent: n ? Math.round(summe / n) : null, schnitt: n ? Math.round(notenSumme / n * 100) / 100 : null };
   }
 
   // ---------- Startseite ----------
@@ -332,7 +340,7 @@
     li.classList.toggle("done", !!w);
     var st = statistik(k, id);
     li.querySelector(".st").textContent = st.n || st.fehlt
-      ? (st.prozent !== null ? "Ø " + st.prozent + " % · " : "") + st.n + "× bewertet" + (st.fehlt ? " · " + st.fehlt + "× fehlt" : "")
+      ? (st.schnitt !== null ? "Ø " + st.schnitt.toFixed(1).replace(".", ",") + " · " : "") + st.n + "× bewertet" + (st.fehlt ? " · " + st.fehlt + "× fehlt" : "")
       : "";
   }
   function status() {
@@ -465,12 +473,12 @@
       var aoa = [];
       aoa.push(["", "Klasse", k.name, "Mitarbeit"]);
       aoa.push(["", "", "", "Stand " + deDatum(heute())]);
-      aoa.push(["Nr", "Name", "Vorname"].concat(tage.map(deDatum), ["Anzahl", "fehlt", "MA %"]));
+      aoa.push(["Nr", "Name", "Vorname"].concat(tage.map(deDatum), ["Anzahl", "fehlt", "Ø Note", "MA %"]));
       k.schueler.forEach(function (s, i) {
         var id = sid(s.name, s.vorname); var st = statistik(k, id);
         aoa.push([i + 1, s.name, s.vorname]
-          .concat(tage.map(function (d) { var w = k.noten[d][id]; return w ? anzeige(w) : ""; }),
-                  [st.n, st.fehlt, st.prozent === null ? "" : st.prozent]));
+          .concat(tage.map(function (d) { var w = k.noten[d][id]; return !w ? "" : w === "f" ? "fehlt" : Number(w); }),
+                  [st.n, st.fehlt, st.schnitt === null ? "" : st.schnitt, st.prozent === null ? "" : st.prozent]));
       });
       var ws = XLSX.utils.aoa_to_sheet(aoa);
       ws["!cols"] = [{ wch: 4 }, { wch: 18 }, { wch: 16 }].concat(tage.map(function () { return { wch: 11 }; }), [{ wch: 8 }, { wch: 7 }, { wch: 7 }]);
@@ -478,10 +486,11 @@
     });
     var info = XLSX.utils.aoa_to_sheet([
       ["Mitarbeit – Sicherung"], ["Erstellt", deDatum(heute())], [],
-      ["Umrechnung", "Prozent"], ["+", state.prozent["+"]], ["++", state.prozent["++"]], ["+++", state.prozent["+++"]], [],
-      ["MA % = Durchschnitt der Bewertungen, „fehlt“ zählt nicht."],
+      ["Note", "Prozent"]].concat(NOTEN.map(function (g) { return [Number(g), state.prozent[g]]; }), [[],
+      ["Ø Note = Durchschnitt der Mitarbeitsnoten, „fehlt“ zählt nicht."],
+      ["MA % = Durchschnitt der Prozentwerte (Tabelle oben), für die Spalte MA der Notenliste."],
       ["Diese Datei kann in der App über „Klassen importieren“ wieder eingelesen werden."]
-    ]);
+    ]));
     info["!cols"] = [{ wch: 14 }, { wch: 12 }];
     XLSX.utils.book_append_sheet(wb, info, "Info");
     return wb;
@@ -516,16 +525,16 @@
   document.getElementById("menuZu").onclick = function () { dlgMenu.close(); };
   document.getElementById("btnWerte").onclick = function () {
     dlgMenu.close();
-    document.getElementById("w1").value = state.prozent["+"];
-    document.getElementById("w2").value = state.prozent["++"];
-    document.getElementById("w3").value = state.prozent["+++"];
+    document.getElementById("werteFelder").innerHTML = NOTEN.map(function (g) {
+      return '<label for="w' + g + '">Note ' + g + '</label><input id="w' + g + '" type="number" min="0" max="100" inputmode="numeric" value="' + state.prozent[g] + '">';
+    }).join("");
     dlgWerte.showModal();
   };
   document.getElementById("werteAbbr").onclick = function () { dlgWerte.close(); };
   document.getElementById("werteOk").onclick = function () {
-    var v = ["w1", "w2", "w3"].map(function (id) { return Number(document.getElementById(id).value); });
+    var v = NOTEN.map(function (g) { return Number(document.getElementById("w" + g).value); });
     if (v.some(function (x) { return !isFinite(x) || x < 0 || x > 100; })) { toast("Bitte Werte zwischen 0 und 100 eingeben."); return; }
-    state.prozent = { "+": v[0], "++": v[1], "+++": v[2] };
+    NOTEN.forEach(function (g, i) { state.prozent[g] = v[i]; });
     speichern(); dlgWerte.close(); toast("Umrechnung gespeichert");
   };
   document.getElementById("btnLoeschen").onclick = function () {
