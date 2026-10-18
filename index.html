@@ -156,7 +156,7 @@
     <div id="hinweis" class="note hidden"></div>
     <div id="leer" class="empty hidden">
       <h2>Noch keine Klassen</h2>
-      <p class="muted">Tippe auf <b>Klassen importieren</b> und wähle deine Notenliste (z.&nbsp;B. <i>1_Noten2627_1.HJ.xlsx</i>). Die App übernimmt von jedem Klassenblatt Name und Vorname. Die Daten bleiben nur auf diesem Gerät.</p>
+      <p class="muted">Tippe auf <b>Klassen importieren</b> und wähle deine Notenliste (z.&nbsp;B. <i>1_Noten2627_1.HJ.xlsx</i>). Die App übernimmt von jedem Klassenblatt Name und Vorname. Einzelne Klassen gehen auch mit der WebUntis-Liste (z.&nbsp;B. <i>Schueler_MF25D1.xls</i>). Die Daten bleiben nur auf diesem Gerät.</p>
       <p><label class="btn primary">Klassen importieren<input type="file" class="hidden datei"></label></p>
     </div>
     <div id="klassen" class="grid"></div>
@@ -449,7 +449,7 @@
           var g = liesMappe(wb, f.name);
           if (!g.length) { toast("Keine Klassenliste gefunden (erwartet: Spalten Name / Vorname ab Zeile 4)."); return; }
           var e = uebernehmen(g);
-          toast(e.klassen + " Klassen gelesen, " + e.schuelerNeu + " Schüler neu" + (e.bewertungen ? ", " + e.bewertungen + " Bewertungen" : ""));
+          toast((e.klassen === 1 ? "Klasse " + g[0].name : e.klassen + " Klassen") + " gelesen, " + e.schuelerNeu + " Schüler neu" + (e.bewertungen ? ", " + e.bewertungen + " Bewertungen" : ""));
           aktiv ? zeigeTag() : zeigeStart();
         } catch (err) { toast("Datei konnte nicht gelesen werden."); }
       };
