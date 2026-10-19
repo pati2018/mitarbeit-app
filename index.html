@@ -134,6 +134,7 @@
   .menu .btn { justify-content: flex-start; }
   .werte { display: grid; grid-template-columns: auto 90px; gap: 8px 12px; align-items: center; margin: 8px 0 4px; }
   .werte input { min-height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); padding: 0 10px; width: 100%; }
+  .einstellungen { max-width: 560px; padding-top: 6px; padding-bottom: 40px; }
   .arten { display: flex; gap: 8px; padding-top: 10px; flex-wrap: wrap; }
   .art { min-height: 40px; padding: 0 16px; border-radius: 20px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-weight: 700; }
   .art.on { background: var(--text); color: var(--bg); border-color: var(--text); }
@@ -201,27 +202,38 @@
   </div>
 </dialog>
 
-<dialog id="dlgArten">
-  <h2 tabindex="-1" autofocus>Bewertungsarten</h2>
-  <p class="muted" style="margin-top:0">Jede Art wird mit Noten 1–6 bewertet. Das Gewicht bestimmt, wie stark sie in „MA %“ eingeht.</p>
-  <div class="artkopf"><span>Name</span><span>Gewicht %</span><span></span></div>
-  <div id="artenFelder"></div>
-  <button class="btn" id="artNeu">+ Art hinzufügen</button>
-  <div class="bar-row" style="margin-top:14px;justify-content:flex-end">
-    <button class="btn" id="artenAbbr">Abbrechen</button>
-    <button class="btn primary" id="artenOk">Speichern</button>
+<!-- Einstellungen als eigene Seiten (Eingabefelder in <dialog> bekommen in der Home-Bildschirm-App auf dem iPad keine Tastatur) -->
+<section id="seiteArten" class="hidden">
+  <header class="bar"><div class="wrap bar-row">
+    <button class="btn ghost" id="artenZurueck">‹ Zurück</button>
+    <h1>Bewertungsarten</h1>
+  </div></header>
+  <div class="wrap einstellungen">
+    <p class="muted">Jede Art wird mit Noten 1–6 bewertet. Das Gewicht bestimmt, wie stark sie in „MA %“ eingeht.</p>
+    <div class="artkopf"><span>Name</span><span>Gewicht %</span><span></span></div>
+    <div id="artenFelder"></div>
+    <button class="btn" id="artNeu">+ Art hinzufügen</button>
+    <div class="bar-row" style="margin-top:18px">
+      <button class="btn" id="artenAbbr">Abbrechen</button>
+      <button class="btn primary" id="artenOk">Speichern</button>
+    </div>
   </div>
-</dialog>
+</section>
 
-<dialog id="dlgWerte">
-  <h2 tabindex="-1" autofocus>Umrechnung in Prozent</h2>
-  <p class="muted" style="margin-top:0">Für „MA %“ im Export: Jede Note bekommt diesen Prozentwert, „fehlt“ zählt nicht. Voreinstellung nach dem Bewertungsschlüssel (Prozentwert der ganzen Note).</p>
-  <div class="werte" id="werteFelder"></div>
-  <div class="bar-row" style="margin-top:14px;justify-content:flex-end">
-    <button class="btn" id="werteAbbr">Abbrechen</button>
-    <button class="btn primary" id="werteOk">Speichern</button>
+<section id="seiteWerte" class="hidden">
+  <header class="bar"><div class="wrap bar-row">
+    <button class="btn ghost" id="werteZurueck">‹ Zurück</button>
+    <h1>Umrechnung in Prozent</h1>
+  </div></header>
+  <div class="wrap einstellungen">
+    <p class="muted">Für „MA %“ im Export: Jede Note bekommt diesen Prozentwert, „fehlt“ zählt nicht. Voreinstellung nach dem Bewertungsschlüssel (Prozentwert der ganzen Note).</p>
+    <div class="werte" id="werteFelder"></div>
+    <div class="bar-row" style="margin-top:18px">
+      <button class="btn" id="werteAbbr">Abbrechen</button>
+      <button class="btn primary" id="werteOk">Speichern</button>
+    </div>
   </div>
-</dialog>
+</section>
 
 <div class="toast" id="toast"></div>
 
@@ -335,6 +347,8 @@
     aktiv = null;
     document.getElementById("start").classList.remove("hidden");
     document.getElementById("erfassung").classList.add("hidden");
+    document.getElementById("seiteArten").classList.add("hidden");
+    document.getElementById("seiteWerte").classList.add("hidden");
     var box = document.getElementById("klassen");
     box.innerHTML = "";
     document.getElementById("leer").classList.toggle("hidden", state.klassen.length > 0);
@@ -669,7 +683,13 @@
     var a = document.activeElement;
     if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) a.blur();
   }
-  var dlgMenu = document.getElementById("dlgMenu"), dlgWerte = document.getElementById("dlgWerte"), dlgArten = document.getElementById("dlgArten");
+  var dlgMenu = document.getElementById("dlgMenu");
+  function zeigeSeite(id) {
+    ["start", "erfassung", "seiteArten", "seiteWerte"].forEach(function (s) { document.getElementById(s).classList.toggle("hidden", s !== id); });
+    window.scrollTo(0, 0);
+  }
+  document.getElementById("artenZurueck").onclick = zeigeStart;
+  document.getElementById("werteZurueck").onclick = zeigeStart;
   document.getElementById("btnMenu").onclick = function () {
     var n = state.klassen.reduce(function (a, k) { return a + k.schueler.length; }, 0);
     document.getElementById("speicherInfo").textContent = state.klassen.length + " Klassen, " + n + " Schüler auf diesem Gerät gespeichert." +
@@ -698,10 +718,10 @@
     dlgMenu.close();
     entwurf = state.arten.map(function (a) { return { id: a.id, name: a.name, gewicht: a.gewicht }; });
     zeigeArtFelder();
-    oeffneDialog(dlgArten);
+    zeigeSeite("seiteArten");
   };
   document.getElementById("artNeu").onclick = function () { entwurf.push({ id: null, name: "", gewicht: 0 }); zeigeArtFelder(); };
-  document.getElementById("artenAbbr").onclick = function () { dlgArten.close(); };
+  document.getElementById("artenAbbr").onclick = zeigeStart;
   document.getElementById("artenOk").onclick = function () {
     var namen = {};
     for (var i = 0; i < entwurf.length; i++) {
@@ -729,7 +749,7 @@
     });
     state.arten = neueListe;
     if (!artMitId(state.arten, state.art)) state.art = state.arten[0].id;
-    speichern(); dlgArten.close(); toast("Bewertungsarten gespeichert");
+    speichern(); zeigeStart(); toast("Bewertungsarten gespeichert");
     if (aktiv) zeigeTag();
   };
 
@@ -739,14 +759,14 @@
     document.getElementById("werteFelder").innerHTML = NOTEN.map(function (g) {
       return '<label for="w' + g + '">Note ' + g + '</label><input id="w' + g + '" type="number" min="0" max="100" inputmode="numeric" value="' + state.prozent[g] + '">';
     }).join("");
-    oeffneDialog(dlgWerte);
+    zeigeSeite("seiteWerte");
   };
-  document.getElementById("werteAbbr").onclick = function () { dlgWerte.close(); };
+  document.getElementById("werteAbbr").onclick = zeigeStart;
   document.getElementById("werteOk").onclick = function () {
     var v = NOTEN.map(function (g) { return Number(document.getElementById("w" + g).value); });
     if (v.some(function (x) { return !isFinite(x) || x < 0 || x > 100; })) { toast("Bitte Werte zwischen 0 und 100 eingeben."); return; }
     NOTEN.forEach(function (g, i) { state.prozent[g] = v[i]; });
-    speichern(); dlgWerte.close(); toast("Umrechnung gespeichert");
+    speichern(); zeigeStart(); toast("Umrechnung gespeichert");
   };
   document.getElementById("btnLoeschen").onclick = function () {
     if (!confirm("Wirklich alle Klassen und Bewertungen auf diesem Gerät löschen? Vorher exportieren!")) return;

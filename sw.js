@@ -1,6 +1,6 @@
 // Offline-Betrieb: erst Netz (damit Updates ankommen), sonst Zwischenspeicher.
 // Schülerdaten liegen nicht hier, sondern im localStorage des Geräts.
-var CACHE = "mitarbeit-v5";
+var CACHE = "mitarbeit-v6";
 var DATEIEN = ["./", "index.html", "manifest.webmanifest", "vendor/xlsx.full.min.js",
   "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png"];
 
@@ -16,9 +16,11 @@ self.addEventListener("activate", function (e) {
 
 self.addEventListener("fetch", function (e) {
   if (e.request.method !== "GET") return;
+  var eigen = new URL(e.request.url).origin === location.origin;
+  // eigene Dateien immer beim Server nachfragen (kein veralteter HTTP-Cache), damit Updates sofort ankommen
   e.respondWith(
-    fetch(e.request).then(function (res) {
-      if (res.ok && new URL(e.request.url).origin === location.origin) {
+    (eigen ? fetch(e.request.url, { cache: "no-cache", credentials: "same-origin" }) : fetch(e.request)).then(function (res) {
+      if (res.ok && eigen) {
         var kopie = res.clone();
         caches.open(CACHE).then(function (c) { c.put(e.request, kopie); });
       }
