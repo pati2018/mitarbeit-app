@@ -129,6 +129,7 @@
   }
   dialog::backdrop { background: rgba(0,0,0,.35); }
   dialog h2 { margin: 0 0 12px; font-size: 20px; }
+  dialog h2:focus { outline: none; }
   .menu { display: flex; flex-direction: column; gap: 10px; }
   .menu .btn { justify-content: flex-start; }
   .werte { display: grid; grid-template-columns: auto 90px; gap: 8px 12px; align-items: center; margin: 8px 0 4px; }
@@ -189,7 +190,7 @@
 </section>
 
 <dialog id="dlgMenu">
-  <h2>Menü</h2>
+  <h2 tabindex="-1" autofocus>Menü</h2>
   <div class="menu">
     <label class="btn">Klassen importieren (Notenliste, WebUntis oder Sicherung)<input type="file" class="hidden datei"></label>
     <button class="btn" id="btnArten">Bewertungsarten und Gewichtung</button>
@@ -201,7 +202,7 @@
 </dialog>
 
 <dialog id="dlgArten">
-  <h2>Bewertungsarten</h2>
+  <h2 tabindex="-1" autofocus>Bewertungsarten</h2>
   <p class="muted" style="margin-top:0">Jede Art wird mit Noten 1–6 bewertet. Das Gewicht bestimmt, wie stark sie in „MA %“ eingeht.</p>
   <div class="artkopf"><span>Name</span><span>Gewicht %</span><span></span></div>
   <div id="artenFelder"></div>
@@ -213,7 +214,7 @@
 </dialog>
 
 <dialog id="dlgWerte">
-  <h2>Umrechnung in Prozent</h2>
+  <h2 tabindex="-1" autofocus>Umrechnung in Prozent</h2>
   <p class="muted" style="margin-top:0">Für „MA %“ im Export: Jede Note bekommt diesen Prozentwert, „fehlt“ zählt nicht. Voreinstellung nach dem Bewertungsschlüssel (Prozentwert der ganzen Note).</p>
   <div class="werte" id="werteFelder"></div>
   <div class="bar-row" style="margin-top:14px;justify-content:flex-end">
@@ -661,12 +662,19 @@
   };
 
   // ---------- Menü ----------
+  // iPad: Ein beim Öffnen automatisch fokussiertes Eingabefeld bekommt beim Antippen keine Tastatur.
+  // Deshalb Fokus auf die Überschrift (autofocus) und sicherheitshalber jedes fokussierte Feld lösen.
+  function oeffneDialog(dlg) {
+    dlg.showModal();
+    var a = document.activeElement;
+    if (a && (a.tagName === "INPUT" || a.tagName === "TEXTAREA")) a.blur();
+  }
   var dlgMenu = document.getElementById("dlgMenu"), dlgWerte = document.getElementById("dlgWerte"), dlgArten = document.getElementById("dlgArten");
   document.getElementById("btnMenu").onclick = function () {
     var n = state.klassen.reduce(function (a, k) { return a + k.schueler.length; }, 0);
     document.getElementById("speicherInfo").textContent = state.klassen.length + " Klassen, " + n + " Schüler auf diesem Gerät gespeichert." +
       (state.letzterExport ? " Letzte Sicherung: " + new Date(state.letzterExport).toLocaleDateString("de-DE") + "." : " Noch keine Sicherung.");
-    dlgMenu.showModal();
+    oeffneDialog(dlgMenu);
   };
   document.getElementById("menuZu").onclick = function () { dlgMenu.close(); };
 
@@ -690,7 +698,7 @@
     dlgMenu.close();
     entwurf = state.arten.map(function (a) { return { id: a.id, name: a.name, gewicht: a.gewicht }; });
     zeigeArtFelder();
-    dlgArten.showModal();
+    oeffneDialog(dlgArten);
   };
   document.getElementById("artNeu").onclick = function () { entwurf.push({ id: null, name: "", gewicht: 0 }); zeigeArtFelder(); };
   document.getElementById("artenAbbr").onclick = function () { dlgArten.close(); };
@@ -731,7 +739,7 @@
     document.getElementById("werteFelder").innerHTML = NOTEN.map(function (g) {
       return '<label for="w' + g + '">Note ' + g + '</label><input id="w' + g + '" type="number" min="0" max="100" inputmode="numeric" value="' + state.prozent[g] + '">';
     }).join("");
-    dlgWerte.showModal();
+    oeffneDialog(dlgWerte);
   };
   document.getElementById("werteAbbr").onclick = function () { dlgWerte.close(); };
   document.getElementById("werteOk").onclick = function () {
