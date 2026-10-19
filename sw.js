@@ -1,6 +1,6 @@
 // Offline-Betrieb: erst Netz (damit Updates ankommen), sonst Zwischenspeicher.
 // Schülerdaten liegen nicht hier, sondern im localStorage des Geräts.
-var CACHE = "mitarbeit-v3";
+var CACHE = "mitarbeit-v4";
 var DATEIEN = ["./", "index.html", "manifest.webmanifest", "vendor/xlsx.full.min.js",
   "icons/icon-180.png", "icons/icon-192.png", "icons/icon-512.png"];
 

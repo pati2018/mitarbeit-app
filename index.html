@@ -133,6 +133,13 @@
   .menu .btn { justify-content: flex-start; }
   .werte { display: grid; grid-template-columns: auto 90px; gap: 8px 12px; align-items: center; margin: 8px 0 4px; }
   .werte input { min-height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); padding: 0 10px; width: 100%; }
+  .arten { display: flex; gap: 8px; padding-top: 10px; flex-wrap: wrap; }
+  .art { min-height: 40px; padding: 0 16px; border-radius: 20px; border: 1px solid var(--line); background: var(--surface); color: var(--text); font-weight: 700; }
+  .art.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .wahl button.aus { opacity: .35; }
+  .artzeile { display: grid; grid-template-columns: 1fr 84px 44px; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .artzeile input, .werte input { min-height: 40px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); padding: 0 10px; width: 100%; font: inherit; }
+  .artkopf { display: grid; grid-template-columns: 1fr 84px 44px; gap: 8px; font-size: 13px; color: var(--muted); margin-bottom: 4px; }
   .toast {
     position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); transform: translateX(-50%);
     background: var(--text); color: var(--bg); padding: 12px 18px; border-radius: 12px; font-weight: 600;
@@ -176,6 +183,7 @@
       <span class="status" id="status"></span>
     </div>
     <div class="chips" id="chips"></div>
+    <div class="arten" id="arten"></div>
   </div></header>
   <div class="wrap"><ul class="liste" id="liste"></ul></div>
 </section>
@@ -184,6 +192,7 @@
   <h2>Menü</h2>
   <div class="menu">
     <label class="btn">Klassen importieren (Notenliste, WebUntis oder Sicherung)<input type="file" class="hidden datei"></label>
+    <button class="btn" id="btnArten">Bewertungsarten und Gewichtung</button>
     <button class="btn" id="btnWerte">Umrechnung in Prozent</button>
     <button class="btn" id="btnLoeschen">Alle Daten auf diesem Gerät löschen</button>
     <p class="muted" id="speicherInfo" style="margin:4px 0 0;font-size:14px"></p>
@@ -191,9 +200,21 @@
   </div>
 </dialog>
 
+<dialog id="dlgArten">
+  <h2>Bewertungsarten</h2>
+  <p class="muted" style="margin-top:0">Jede Art wird mit Noten 1–6 bewertet. Das Gewicht bestimmt, wie stark sie in „MA %“ eingeht.</p>
+  <div class="artkopf"><span>Name</span><span>Gewicht %</span><span></span></div>
+  <div id="artenFelder"></div>
+  <button class="btn" id="artNeu">+ Art hinzufügen</button>
+  <div class="bar-row" style="margin-top:14px;justify-content:flex-end">
+    <button class="btn" id="artenAbbr">Abbrechen</button>
+    <button class="btn primary" id="artenOk">Speichern</button>
+  </div>
+</dialog>
+
 <dialog id="dlgWerte">
   <h2>Umrechnung in Prozent</h2>
-  <p class="muted" style="margin-top:0">Für die Spalte „MA %“ im Export: Durchschnitt der Prozentwerte, „fehlt“ zählt nicht. Voreinstellung nach dem Bewertungsschlüssel (Prozentwert der ganzen Note).</p>
+  <p class="muted" style="margin-top:0">Für „MA %“ im Export: Jede Note bekommt diesen Prozentwert, „fehlt“ zählt nicht. Voreinstellung nach dem Bewertungsschlüssel (Prozentwert der ganzen Note).</p>
   <div class="werte" id="werteFelder"></div>
   <div class="bar-row" style="margin-top:14px;justify-content:flex-end">
     <button class="btn" id="werteAbbr">Abbrechen</button>
@@ -209,28 +230,41 @@
   "use strict";
   var KEY = "mitarbeit-v1";
   var NOTEN = ["1", "2", "3", "4", "5", "6"];
-  var WERTE = NOTEN.concat(["f"]);
   // Bewertungsschlüssel: Prozentwert, der genau die ganze Note ergibt (94 % = 1, 80 % = 2, ...)
   var PROZENT_STANDARD = { "1": 94, "2": 80, "3": 65, "4": 50, "5": 31, "6": 0 };
+  var ARTEN_STANDARD = [{ id: "a1", name: "Melden", gewicht: 70 }, { id: "a2", name: "Material", gewicht: 30 }];
   var state = laden();
   var aktiv = null;      // Name der geöffneten Klasse
   var datum = heute();
 
+  // Datenmodell: klasse.noten[datum][schülerId] = { f: true (fehlt), <artId>: "1".."6", ... }
+
   // ---------- Speicher ----------
-  function leer() { return { version: 2, klassen: [], prozent: Object.assign({}, PROZENT_STANDARD), letzterExport: null }; }
+  function kopie(o) { return JSON.parse(JSON.stringify(o)); }
+  function leer() { return { version: 3, klassen: [], arten: kopie(ARTEN_STANDARD), art: "a1", prozent: kopie(PROZENT_STANDARD), letzterExport: null }; }
   function laden() {
     try {
       var s = JSON.parse(localStorage.getItem(KEY) || "null");
       if (s && Array.isArray(s.klassen)) {
-        // Umstellung von +/++/+++ auf Noten 1–6: alte Plus-Werte entfernen
-        if (!s.prozent || s.prozent["1"] == null) s.prozent = Object.assign({}, PROZENT_STANDARD);
+        if (!s.prozent || s.prozent["1"] == null) s.prozent = kopie(PROZENT_STANDARD);
+        if (!Array.isArray(s.arten) || !s.arten.length) s.arten = kopie(ARTEN_STANDARD);
+        var erste = s.arten[0].id;
         s.klassen.forEach(function (k) {
           Object.keys(k.noten).forEach(function (d) {
-            Object.keys(k.noten[d]).forEach(function (id) { if (WERTE.indexOf(k.noten[d][id]) < 0) delete k.noten[d][id]; });
+            Object.keys(k.noten[d]).forEach(function (id) {
+              var v = k.noten[d][id];
+              // ältere Versionen: ein Wert pro Tag ("1".."6" oder "f"); +/++/+++ entfällt
+              if (typeof v === "string") {
+                if (v === "f") k.noten[d][id] = { f: true };
+                else if (NOTEN.indexOf(v) >= 0) { var o = {}; o[erste] = v; k.noten[d][id] = o; }
+                else delete k.noten[d][id];
+              }
+            });
             if (!Object.keys(k.noten[d]).length) delete k.noten[d];
           });
         });
-        s.version = 2;
+        if (!s.art || !artMitId(s.arten, s.art)) s.art = erste;
+        s.version = 3;
         return s;
       }
     } catch (e) {}
@@ -257,19 +291,42 @@
   function tagVersatz(s, n) { var p = s.split("-"); var d = new Date(+p[0], p[1] - 1, +p[2] + n); return iso(d); }
   function sid(name, vorname) { return name + "|" + vorname; }
   function klasse(name) { for (var i = 0; i < state.klassen.length; i++) if (state.klassen[i].name === name) return state.klassen[i]; return null; }
-  function anzeige(w) { return w === "f" ? "fehlt" : w; }
+  function artMitId(liste, id) { for (var i = 0; i < liste.length; i++) if (liste[i].id === id) return liste[i]; return null; }
+  function artMitName(name) { var n = name.toLowerCase(); for (var i = 0; i < state.arten.length; i++) if (state.arten[i].name.toLowerCase() === n) return state.arten[i]; return null; }
+  function neueArtId() { var i = 1; while (artMitId(state.arten, "a" + i)) i++; return "a" + i; }
+  function tageMitDaten(k) { return Object.keys(k.noten).filter(function (d) { return Object.keys(k.noten[d]).length; }).sort(); }
+  function komma(x, stellen) { return x.toFixed(stellen).replace(".", ","); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
   var tt;
   function toast(t) { var el = document.getElementById("toast"); el.textContent = t; el.classList.add("show"); clearTimeout(tt); tt = setTimeout(function () { el.classList.remove("show"); }, 2600); }
 
+  // Je Art: Anzahl, Ø Note, Ø Prozent; gesamt: gewichteter Prozentwert über die Arten mit Noten
   function statistik(k, id) {
-    var n = 0, summe = 0, notenSumme = 0, fehlt = 0;
+    var fehlt = 0, tage = 0, je = {};
+    state.arten.forEach(function (a) { je[a.id] = { n: 0, noten: 0, prozent: 0 }; });
     Object.keys(k.noten).forEach(function (d) {
-      var w = k.noten[d][id];
-      if (w === "f") fehlt++;
-      else if (NOTEN.indexOf(w) >= 0) { n++; summe += Number(state.prozent[w]); notenSumme += Number(w); }
+      var e = k.noten[d][id]; if (!e) return;
+      if (e.f) { fehlt++; return; }
+      var hat = false;
+      state.arten.forEach(function (a) {
+        var w = e[a.id]; if (NOTEN.indexOf(w) < 0) return;
+        je[a.id].n++; je[a.id].noten += Number(w); je[a.id].prozent += Number(state.prozent[w]); hat = true;
+      });
+      if (hat) tage++;
     });
-    return { n: n, fehlt: fehlt, prozent: n ? Math.round(summe / n) : null, schnitt: n ? Math.round(notenSumme / n * 100) / 100 : null };
+    var gSumme = 0, gGewicht = 0, mitNoten = 0;
+    state.arten.forEach(function (a) {
+      var s = je[a.id];
+      s.schnitt = s.n ? Math.round(s.noten / s.n * 100) / 100 : null;
+      s.pz = s.n ? s.prozent / s.n : null;
+      if (s.n) { mitNoten++; gSumme += Number(a.gewicht) * s.pz; gGewicht += Number(a.gewicht); }
+    });
+    var gesamt = null;
+    if (mitNoten) {
+      if (gGewicht > 0) gesamt = Math.round(gSumme / gGewicht);
+      else gesamt = Math.round(state.arten.reduce(function (a, x) { return a + (je[x.id].n ? je[x.id].pz : 0); }, 0) / mitNoten);
+    }
+    return { fehlt: fehlt, tage: tage, je: je, gesamt: gesamt };
   }
 
   // ---------- Startseite ----------
@@ -282,7 +339,7 @@
     document.getElementById("leer").classList.toggle("hidden", state.klassen.length > 0);
     document.getElementById("btnExport").disabled = state.klassen.length === 0;
     state.klassen.forEach(function (k) {
-      var tage = Object.keys(k.noten).filter(function (d) { return Object.keys(k.noten[d]).length; }).sort();
+      var tage = tageMitDaten(k);
       var b = document.createElement("button");
       b.className = "klasse";
       b.innerHTML = "<b>" + esc(k.name) + "</b><span>" + k.schueler.length + " Schüler</span><span>" +
@@ -316,6 +373,17 @@
     zeigeTag();
     window.scrollTo(0, 0);
   }
+  function zeigeArten() {
+    var box = document.getElementById("arten");
+    box.innerHTML = "";
+    state.arten.forEach(function (a) {
+      var b = document.createElement("button");
+      b.className = "art" + (a.id === state.art ? " on" : "");
+      b.textContent = a.name;
+      b.onclick = function () { state.art = a.id; speichern(); zeigeTag(); };
+      box.appendChild(b);
+    });
+  }
   function zeigeTag() {
     var k = klasse(aktiv); if (!k) return zeigeStart();
     document.getElementById("datum").value = datum;
@@ -328,30 +396,39 @@
       li.dataset.id = id;
       li.innerHTML = '<span class="nr">' + (i + 1) + '</span><div class="wer"><b>' + esc(s.name) + ", " + esc(s.vorname) +
         '</b><span class="st"></span></div><div class="wahl">' +
-        WERTE.map(function (w) { return '<button data-w="' + w + '"' + (w === "f" ? ' class="f"' : "") + ">" + anzeige(w) + "</button>"; }).join("") + "</div>";
+        NOTEN.map(function (w) { return '<button data-w="' + w + '">' + w + "</button>"; }).join("") +
+        '<button data-w="f" class="f">fehlt</button></div>';
       ul.appendChild(li);
       markiere(li, tag[id], k, id);
     });
+    zeigeArten();
     status();
     chips();
   }
-  function markiere(li, w, k, id) {
-    li.querySelectorAll(".wahl button").forEach(function (b) { b.classList.toggle("on", b.dataset.w === w); });
-    li.classList.toggle("done", !!w);
-    var st = statistik(k, id);
-    li.querySelector(".st").textContent = st.n || st.fehlt
-      ? (st.schnitt !== null ? "Ø " + st.schnitt.toFixed(1).replace(".", ",") + " · " : "") + st.n + "× bewertet" + (st.fehlt ? " · " + st.fehlt + "× fehlt" : "")
-      : "";
+  function markiere(li, e, k, id) {
+    e = e || {};
+    li.querySelectorAll(".wahl button").forEach(function (b) {
+      var w = b.dataset.w;
+      b.classList.toggle("on", w === "f" ? !!e.f : (!e.f && e[state.art] === w));
+      b.classList.toggle("aus", w !== "f" && !!e.f);
+    });
+    li.classList.toggle("done", !!e.f || !!e[state.art]);
+    var st = statistik(k, id), a = artMitId(state.arten, state.art), sa = st.je[state.art];
+    var teile = [];
+    if (sa && sa.n) teile.push(a.name + " Ø " + komma(sa.schnitt, 1) + " (" + sa.n + "×)");
+    if (st.gesamt !== null && state.arten.length > 1) teile.push("gesamt " + st.gesamt + " %");
+    if (st.fehlt) teile.push(st.fehlt + "× fehlt");
+    li.querySelector(".st").textContent = teile.join(" · ");
   }
   function status() {
     var k = klasse(aktiv); var tag = k.noten[datum] || {};
-    var n = k.schueler.filter(function (s) { return tag[sid(s.name, s.vorname)]; }).length;
+    var n = k.schueler.filter(function (s) { var e = tag[sid(s.name, s.vorname)]; return e && (e.f || e[state.art]); }).length;
     document.getElementById("status").textContent = n + " von " + k.schueler.length + " erfasst";
   }
   function chips() {
     var k = klasse(aktiv);
     // immer sichtbar (inkl. gewähltem Tag), damit die Liste beim ersten Antippen nicht verrutscht
-    var tage = Object.keys(k.noten).filter(function (d) { return Object.keys(k.noten[d]).length; });
+    var tage = tageMitDaten(k);
     if (tage.indexOf(datum) < 0) tage.push(datum);
     tage.sort().reverse();
     var box = document.getElementById("chips");
@@ -364,11 +441,18 @@
       box.appendChild(c);
     });
   }
-  document.getElementById("liste").addEventListener("click", function (e) {
-    var b = e.target.closest(".wahl button"); if (!b) return;
+  document.getElementById("liste").addEventListener("click", function (ev) {
+    var b = ev.target.closest(".wahl button"); if (!b) return;
     var li = b.closest("li"); var id = li.dataset.id; var k = klasse(aktiv);
     var tag = k.noten[datum] || (k.noten[datum] = {});
-    if (tag[id] === b.dataset.w) delete tag[id]; else tag[id] = b.dataset.w;
+    var e = tag[id] || (tag[id] = {});
+    var w = b.dataset.w;
+    if (w === "f") { if (e.f) delete e.f; else e.f = true; }
+    else {
+      if (e.f) delete e.f;                                   // Note antippen hebt „fehlt“ auf
+      if (e[state.art] === w) delete e[state.art]; else e[state.art] = w;
+    }
+    if (!Object.keys(e).length) delete tag[id];
     if (!Object.keys(tag).length) delete k.noten[datum];
     speichern();
     markiere(li, tag[id], k, id);
@@ -384,32 +468,59 @@
   // ---------- Import ----------
   function txt(ws, adr) { var c = ws[adr]; return c ? String(c.w != null ? c.w : c.v).trim() : ""; }
   function wert(ws, adr) { var c = ws[adr]; return c ? String(c.v).trim() : ""; }
+  function zelle(r, c) { return XLSX.utils.encode_cell({ r: r, c: c }); }
   function datumAusKopf(ws, adr) {
     var c = ws[adr]; if (!c) return null;
     if (c.t === "n" && c.v > 30000 && c.v < 80000) { var d = XLSX.SSF.parse_date_code(c.v); return d.y + "-" + pad(d.m) + "-" + pad(d.d); }
     var m = String(c.v).trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
     return m ? m[3] + "-" + pad(+m[2]) + "-" + pad(+m[1]) : null;
   }
+  // Blatt „Info“ einer Sicherung: Bewertungsarten mit Gewicht und Umrechnung in Prozent
+  function liesInfo(ws) {
+    var info = { arten: [], prozent: null };
+    var rng = XLSX.utils.decode_range(ws["!ref"]);
+    for (var r = 0; r <= rng.e.r; r++) {
+      var a = txt(ws, zelle(r, 0)), b = txt(ws, zelle(r, 1));
+      if (a === "Bewertungsart" && b === "Gewicht") {
+        for (var r2 = r + 1; r2 <= rng.e.r && txt(ws, zelle(r2, 0)); r2++) info.arten.push({ name: txt(ws, zelle(r2, 0)), gewicht: Number(wert(ws, zelle(r2, 1))) || 0 });
+      }
+      if (a === "Note" && b === "Prozent") {
+        var p = {};
+        for (var r3 = r + 1; r3 <= r + 6; r3++) { var g = wert(ws, zelle(r3, 0)), v = Number(wert(ws, zelle(r3, 1))); if (NOTEN.indexOf(g) >= 0 && isFinite(v)) p[g] = v; }
+        if (Object.keys(p).length === 6) info.prozent = p;
+      }
+    }
+    return info;
+  }
   function liesMappe(wb, dateiname) {
-    var gefunden = [];
+    var gefunden = [], info = null;
     wb.SheetNames.forEach(function (sn) {
       var ws = wb.Sheets[sn]; if (!ws || !ws["!ref"]) return;
       var rng = XLSX.utils.decode_range(ws["!ref"]);
+      if (sn === "Info" && txt(ws, "A1").indexOf("Mitarbeit") === 0) { info = liesInfo(ws); return; }
       // Notenliste oder eigener Export: B3 "Name", C3 "Vorname", ab Zeile 4
       if (txt(ws, "B3") === "Name" && txt(ws, "C3") === "Vorname") {
         var name = txt(ws, "C1") || sn;
         if (/^vorlage$/i.test(name)) return;
+        // Spalten mit Bewertungen: Datum in Zeile 2 + Art in Zeile 3, oder (ältere Sicherung) Datum in Zeile 3
         var spalten = [];
-        for (var c = 3; c <= rng.e.c; c++) { var d = datumAusKopf(ws, XLSX.utils.encode_cell({ r: 2, c: c })); if (d) spalten.push({ c: c, d: d }); }
+        for (var c = 3; c <= rng.e.c; c++) {
+          var d3 = datumAusKopf(ws, zelle(2, c));
+          if (d3) { spalten.push({ c: c, d: d3, art: "" }); continue; }
+          var d2 = datumAusKopf(ws, zelle(1, c)), art = txt(ws, zelle(2, c));
+          if (d2 && art) spalten.push({ c: c, d: d2, art: art });
+        }
         var schueler = [], noten = {};
         for (var r = 3; r <= rng.e.r; r++) {
           var nn = txt(ws, "B" + (r + 1)), vn = txt(ws, "C" + (r + 1));
           if (!nn) continue;
           schueler.push({ name: nn, vorname: vn });
           spalten.forEach(function (sp) {
-            var w = wert(ws, XLSX.utils.encode_cell({ r: r, c: sp.c }));
-            if (w === "fehlt") w = "f";
-            if (WERTE.indexOf(w) >= 0) { (noten[sp.d] = noten[sp.d] || {})[sid(nn, vn)] = w; }
+            var w = wert(ws, zelle(r, sp.c)); if (!w) return;
+            var tag = noten[sp.d] = noten[sp.d] || {};
+            var e = tag[sid(nn, vn)] = tag[sid(nn, vn)] || { f: false, w: {} };
+            if (w === "fehlt" || w === "f") e.f = true;
+            else if (NOTEN.indexOf(w) >= 0) e.w[sp.art] = w;
           });
         }
         if (schueler.length) gefunden.push({ name: name, schueler: schueler, noten: noten });
@@ -425,11 +536,29 @@
         if (liste.length) gefunden.push({ name: kl || dateiname.replace(/\.[^.]+$/, ""), schueler: liste, noten: {} });
       }
     });
-    return gefunden;
+    return { klassen: gefunden, info: info };
   }
-  function uebernehmen(gefunden) {
+  function artFuer(name) {
+    if (!name) return state.arten[0];
+    var a = artMitName(name);
+    if (!a) { a = { id: neueArtId(), name: name, gewicht: 0 }; state.arten.push(a); }
+    return a;
+  }
+  function uebernehmen(ergebnis) {
     var neu = 0, schuelerNeu = 0, bewertungen = 0;
-    gefunden.forEach(function (g) {
+    if (ergebnis.info) {
+      if (ergebnis.info.prozent) state.prozent = ergebnis.info.prozent;
+      if (ergebnis.info.arten.length) {
+        // Arten der Sicherung übernehmen (Reihenfolge, Gewicht); eigene Arten ohne Bewertungen fallen weg
+        var genutzt = {};
+        state.klassen.forEach(function (k) { Object.keys(k.noten).forEach(function (d) { Object.keys(k.noten[d]).forEach(function (id) { Object.keys(k.noten[d][id]).forEach(function (a) { genutzt[a] = true; }); }); }); });
+        var liste = ergebnis.info.arten.map(function (ia) { var a = artFuer(ia.name); a.gewicht = ia.gewicht; return a; });
+        state.arten.forEach(function (a) { if (liste.indexOf(a) < 0 && genutzt[a.id]) liste.push(a); });
+        state.arten = liste;
+        if (!artMitId(state.arten, state.art)) state.art = state.arten[0].id;
+      }
+    }
+    ergebnis.klassen.forEach(function (g) {
       var k = klasse(g.name);
       if (!k) { k = { name: g.name, schueler: [], noten: {} }; state.klassen.push(k); neu++; }
       var vorhanden = {};
@@ -438,12 +567,18 @@
       k.schueler.sort(function (a, b) { return a.name.localeCompare(b.name, "de") || a.vorname.localeCompare(b.vorname, "de"); });
       Object.keys(g.noten).forEach(function (d) {
         var tag = k.noten[d] || (k.noten[d] = {});
-        Object.keys(g.noten[d]).forEach(function (id) { tag[id] = g.noten[d][id]; bewertungen++; });
+        Object.keys(g.noten[d]).forEach(function (id) {
+          var imp = g.noten[d][id], e = tag[id] || (tag[id] = {});
+          if (imp.f) { e.f = true; bewertungen++; }
+          Object.keys(imp.w).forEach(function (artName) { e[artFuer(artName).id] = imp.w[artName]; bewertungen++; });
+          if (!Object.keys(e).length) delete tag[id];
+        });
+        if (!Object.keys(tag).length) delete k.noten[d];
       });
     });
     speichern();
     dauerhaft();
-    return { klassen: gefunden.length, neu: neu, schuelerNeu: schuelerNeu, bewertungen: bewertungen };
+    return { klassen: ergebnis.klassen.length, neu: neu, schuelerNeu: schuelerNeu, bewertungen: bewertungen };
   }
   document.querySelectorAll("input.datei").forEach(function (inp) {
     inp.addEventListener("change", function () {
@@ -454,9 +589,9 @@
       fr.onload = function () {
         try {
           var wb = XLSX.read(new Uint8Array(fr.result), { type: "array" });
-          var g = liesMappe(wb, f.name);
+          var erg = liesMappe(wb, f.name), g = erg.klassen;
           if (!g.length) { toast("Keine Klassenliste gefunden (erwartet: Spalten Name / Vorname ab Zeile 4)."); return; }
-          var e = uebernehmen(g);
+          var e = uebernehmen(erg);
           toast((e.klassen === 1 ? "Klasse " + g[0].name : e.klassen + " Klassen") + " gelesen, " + e.schuelerNeu + " Schüler neu" + (e.bewertungen ? ", " + e.bewertungen + " Bewertungen" : ""));
           aktiv ? zeigeTag() : zeigeStart();
         } catch (err) { toast("Datei konnte nicht gelesen werden."); }
@@ -466,32 +601,43 @@
   });
 
   // ---------- Export ----------
+  // Pro Klasse ein Blatt: Zeile 2 Datum, Zeile 3 Bewertungsart, ab Zeile 4 die Schüler
   function mappe() {
     var wb = XLSX.utils.book_new();
     state.klassen.forEach(function (k) {
-      var tage = Object.keys(k.noten).filter(function (d) { return Object.keys(k.noten[d]).length; }).sort();
+      var spalten = [];
+      tageMitDaten(k).forEach(function (d) {
+        var tag = k.noten[d];
+        var arten = state.arten.filter(function (a) { return Object.keys(tag).some(function (id) { return !tag[id].f && NOTEN.indexOf(tag[id][a.id]) >= 0; }); });
+        if (!arten.length) arten = [state.arten[0]];           // Tag nur mit „fehlt“
+        arten.forEach(function (a) { spalten.push({ d: d, a: a }); });
+      });
       var aoa = [];
-      aoa.push(["", "Klasse", k.name, "Mitarbeit"]);
-      aoa.push(["", "", "", "Stand " + deDatum(heute())]);
-      aoa.push(["Nr", "Name", "Vorname"].concat(tage.map(deDatum), ["Anzahl", "fehlt", "Ø Note", "MA %"]));
+      aoa.push(["", "Klasse", k.name, "Mitarbeit – Stand " + deDatum(heute())]);
+      aoa.push(["", "", ""].concat(spalten.map(function (s) { return deDatum(s.d); })));
+      aoa.push(["Nr", "Name", "Vorname"].concat(spalten.map(function (s) { return s.a.name; }),
+        ["Tage", "fehlt"], state.arten.map(function (a) { return "Ø " + a.name; }), ["MA %"]));
       k.schueler.forEach(function (s, i) {
         var id = sid(s.name, s.vorname); var st = statistik(k, id);
         aoa.push([i + 1, s.name, s.vorname]
-          .concat(tage.map(function (d) { var w = k.noten[d][id]; return !w ? "" : w === "f" ? "fehlt" : Number(w); }),
-                  [st.n, st.fehlt, st.schnitt === null ? "" : st.schnitt, st.prozent === null ? "" : st.prozent]));
+          .concat(spalten.map(function (sp) { var e = k.noten[sp.d][id]; return !e ? "" : e.f ? "fehlt" : NOTEN.indexOf(e[sp.a.id]) >= 0 ? Number(e[sp.a.id]) : ""; }),
+                  [st.tage, st.fehlt],
+                  state.arten.map(function (a) { return st.je[a.id].schnitt === null ? "" : st.je[a.id].schnitt; }),
+                  [st.gesamt === null ? "" : st.gesamt]));
       });
       var ws = XLSX.utils.aoa_to_sheet(aoa);
-      ws["!cols"] = [{ wch: 4 }, { wch: 18 }, { wch: 16 }].concat(tage.map(function () { return { wch: 11 }; }), [{ wch: 8 }, { wch: 7 }, { wch: 7 }]);
+      ws["!cols"] = [{ wch: 4 }, { wch: 18 }, { wch: 16 }].concat(spalten.map(function () { return { wch: 11 }; }),
+        [{ wch: 6 }, { wch: 6 }], state.arten.map(function (a) { return { wch: Math.max(8, a.name.length + 3) }; }), [{ wch: 7 }]);
       XLSX.utils.book_append_sheet(wb, ws, k.name.slice(0, 31));
     });
-    var info = XLSX.utils.aoa_to_sheet([
-      ["Mitarbeit – Sicherung"], ["Erstellt", deDatum(heute())], [],
-      ["Note", "Prozent"]].concat(NOTEN.map(function (g) { return [Number(g), state.prozent[g]]; }), [[],
-      ["Ø Note = Durchschnitt der Mitarbeitsnoten, „fehlt“ zählt nicht."],
-      ["MA % = Durchschnitt der Prozentwerte (Tabelle oben), für die Spalte MA der Notenliste."],
-      ["Diese Datei kann in der App über „Klassen importieren“ wieder eingelesen werden."]
-    ]));
-    info["!cols"] = [{ wch: 14 }, { wch: 12 }];
+    var info = XLSX.utils.aoa_to_sheet(
+      [["Mitarbeit – Sicherung"], ["Erstellt", deDatum(heute())], [], ["Bewertungsart", "Gewicht"]]
+        .concat(state.arten.map(function (a) { return [a.name, Number(a.gewicht)]; }), [[], ["Note", "Prozent"]],
+          NOTEN.map(function (g) { return [Number(g), state.prozent[g]]; }), [[],
+          ["Ø = Durchschnitt der Noten je Bewertungsart, „fehlt“ zählt nicht."],
+          ["MA % = Prozentwerte je Art (Tabelle Note/Prozent) gemittelt und nach Gewicht zusammengefasst; für die Spalte MA der Notenliste."],
+          ["Diese Datei kann in der App über „Klassen importieren“ wieder eingelesen werden (inkl. Bewertungsarten und Umrechnung)."]]));
+    info["!cols"] = [{ wch: 16 }, { wch: 10 }];
     XLSX.utils.book_append_sheet(wb, info, "Info");
     return wb;
   }
@@ -515,7 +661,7 @@
   };
 
   // ---------- Menü ----------
-  var dlgMenu = document.getElementById("dlgMenu"), dlgWerte = document.getElementById("dlgWerte");
+  var dlgMenu = document.getElementById("dlgMenu"), dlgWerte = document.getElementById("dlgWerte"), dlgArten = document.getElementById("dlgArten");
   document.getElementById("btnMenu").onclick = function () {
     var n = state.klassen.reduce(function (a, k) { return a + k.schueler.length; }, 0);
     document.getElementById("speicherInfo").textContent = state.klassen.length + " Klassen, " + n + " Schüler auf diesem Gerät gespeichert." +
@@ -523,6 +669,63 @@
     dlgMenu.showModal();
   };
   document.getElementById("menuZu").onclick = function () { dlgMenu.close(); };
+
+  // Bewertungsarten
+  var entwurf = [];
+  function zeigeArtFelder() {
+    var box = document.getElementById("artenFelder");
+    box.innerHTML = "";
+    entwurf.forEach(function (a, i) {
+      var z = document.createElement("div");
+      z.className = "artzeile";
+      z.innerHTML = '<input type="text" value="' + esc(a.name) + '" aria-label="Name"><input type="number" min="0" max="100" inputmode="numeric" value="' + a.gewicht + '" aria-label="Gewicht"><button class="btn rund" aria-label="Entfernen">×</button>';
+      z.children[0].oninput = function () { a.name = this.value; };
+      z.children[1].oninput = function () { a.gewicht = this.value; };
+      z.children[2].disabled = entwurf.length === 1;
+      z.children[2].onclick = function () { entwurf.splice(i, 1); zeigeArtFelder(); };
+      box.appendChild(z);
+    });
+  }
+  document.getElementById("btnArten").onclick = function () {
+    dlgMenu.close();
+    entwurf = state.arten.map(function (a) { return { id: a.id, name: a.name, gewicht: a.gewicht }; });
+    zeigeArtFelder();
+    dlgArten.showModal();
+  };
+  document.getElementById("artNeu").onclick = function () { entwurf.push({ id: null, name: "", gewicht: 0 }); zeigeArtFelder(); };
+  document.getElementById("artenAbbr").onclick = function () { dlgArten.close(); };
+  document.getElementById("artenOk").onclick = function () {
+    var namen = {};
+    for (var i = 0; i < entwurf.length; i++) {
+      var a = entwurf[i]; a.name = String(a.name).trim(); var g = Number(a.gewicht);
+      if (!a.name) { toast("Bitte jeder Art einen Namen geben."); return; }
+      if (namen[a.name.toLowerCase()]) { toast("Der Name „" + a.name + "“ kommt doppelt vor."); return; }
+      if (!isFinite(g) || g < 0 || g > 100) { toast("Gewichte bitte zwischen 0 und 100."); return; }
+      namen[a.name.toLowerCase()] = true; a.gewicht = g;
+    }
+    var weg = state.arten.filter(function (a) { return !entwurf.some(function (x) { return x.id === a.id; }); });
+    var betroffen = 0;
+    state.klassen.forEach(function (k) { Object.keys(k.noten).forEach(function (d) { Object.keys(k.noten[d]).forEach(function (id) { weg.forEach(function (a) { if (k.noten[d][id][a.id]) betroffen++; }); }); }); });
+    if (betroffen && !confirm("Entfernt: " + weg.map(function (a) { return a.name; }).join(", ") + ". Dabei werden " + betroffen + " Bewertungen gelöscht. Fortfahren?")) return;
+    state.klassen.forEach(function (k) {
+      Object.keys(k.noten).forEach(function (d) {
+        Object.keys(k.noten[d]).forEach(function (id) { var e = k.noten[d][id]; weg.forEach(function (a) { delete e[a.id]; }); if (!Object.keys(e).length) delete k.noten[d][id]; });
+        if (!Object.keys(k.noten[d]).length) delete k.noten[d];
+      });
+    });
+    var neueListe = [];
+    entwurf.forEach(function (x) {
+      var a = x.id ? artMitId(state.arten, x.id) : null;
+      if (!a) { state.arten.push(a = { id: neueArtId() }); }
+      a.name = x.name; a.gewicht = x.gewicht; neueListe.push(a);
+    });
+    state.arten = neueListe;
+    if (!artMitId(state.arten, state.art)) state.art = state.arten[0].id;
+    speichern(); dlgArten.close(); toast("Bewertungsarten gespeichert");
+    if (aktiv) zeigeTag();
+  };
+
+  // Umrechnung
   document.getElementById("btnWerte").onclick = function () {
     dlgMenu.close();
     document.getElementById("werteFelder").innerHTML = NOTEN.map(function (g) {
